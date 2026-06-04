@@ -1,0 +1,4 @@
+interface:
+  display_name: "PPT Skill"
+  short_description: "Swimlane-first PPT framework for product reports"
+  default_prompt: "Use $ppt-skill to build a product weekly report PPT with the fixed swimlane-first framework."
