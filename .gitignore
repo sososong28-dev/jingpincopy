@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+data/
+outputs/
+*.db
+*.sqlite
+*.sqlite3
+
+.env
+*.log
+*.eml
+*.xlsx
+
