@@ -1,0 +1,11 @@
+{
+  "name": "competitor-intel-social-browser",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "social:collect": "node scripts/social_browser_collect.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.52.0"
+  }
+}
