@@ -1,118 +1,111 @@
-# 行业竞品信息收集工具 V1
+# 行业竞品情报收集工具
 
-这是一个本地可运行的竞品信息收集工具，覆盖美妆、医药、计生/两性健康行业。工具会从公开搜索、新闻源、社交内容入口和行业来源中发现信息，保留原标题和可跳转链接，并为每条信息生成 AI 总结、内容总结、选取原因、发布时间和收录时间。
+本仓库是一个本地运行的竞品情报采集与沉淀工具，面向美妆、医药、计生/两性健康等行业。它从公开搜索、新闻源和授权浏览器采集入口发现候选信息，整理为日报、候选池、SQLite 数据库记录和 Obsidian 笔记。
+
+## 项目结构
+
+| 路径 | 用途 |
+|---|---|
+| `src/competitor_collector.py` | 主采集器：公开搜索、去重、筛选、数据库写入、日报生成、Obsidian 同步。 |
+| `scripts/run_collector.py` | Python 主采集器命令行入口。 |
+| `scripts/import_social_candidates.py` | 将小红书/抖音浏览器采集 JSONL 导入候选池和本地数据库。 |
+| `scripts/generate_weekly_report.py` | 基于 `D:\kin\competitor_intel.db` 生成周报 Markdown 和长图。 |
+| `scripts/social_browser_collect.mjs` | Playwright 授权浏览器采集脚本。 |
+| `scripts/run_social_browser_collect.ps1` | Windows PowerShell 封装入口，会按需安装 Node 依赖。 |
+| `scripts/run_daily_db_update.ps1` | 每日自动更新入口。 |
+| `scripts/send_daily_email.py` | 日报邮件发送辅助脚本。 |
+| `configs/collector_config.json` | 主采集配置：行业、品牌、来源、查询词、数据库/Obsidian 路径。 |
+| `configs/social_browser_config.json` | 社媒浏览器采集配置。 |
+| `docs/CODE_INDEX.md` | 更详细的代码索引、运行链路和验证清单。 |
+
+运行产物默认写入 `data/`、`outputs/` 和 `D:\kin`，这些目录不应作为源码上传。
 
 ## 默认机制
 
-- 单日输出不超过 30 条。
-- 计生/两性健康在日报中严格大于 60%。
-- 每条信息保留：行业、品牌、品类、平台、来源、原标题、原始链接、新闻发布时间、收录时间、AI 总结、内容总结、相关性理由、选取原因、等级。
-- 新闻发布时间距离收集日不超过 6 个月。
-- 跨天按 180 天窗口去重，同一天重跑允许覆盖刷新当天报告。
+- 单日输出默认不超过 30 条。
+- 计生/两性健康在日报中保持配置要求的最低占比。
+- 跨天按配置窗口去重，同一天重跑允许覆盖刷新当天报告。
 - 数据同步到本地 SQLite：`D:\kin\competitor_intel.db`。
 - Obsidian 同步目录：`D:\kin\竞品情报`。
 - OB 数据库同步目录：`D:\kin\OB数据库\08 项目\竞品情报收集`。
-- 邮件发送已关闭，当前自动化任务只更新数据库和 Obsidian。
 
-## 运行
+## 环境要求
+
+- Windows + PowerShell。
+- Python 3.11+。本机推荐使用 Codex bundled Python：
+
+```powershell
+$py = "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+```
+
+- Node.js + npm，用于 Playwright 社媒采集。
+- 已登录的小红书/抖音浏览器 profile，仅用于合规的授权浏览器采集，不绕过登录、验证码或平台风控。
+
+## 安装
+
+```powershell
+npm install
+```
+
+Python 当前只使用标准库；`scripts/generate_weekly_report.py` 需要 Pillow：
+
+```powershell
+& $py -m pip install pillow
+```
+
+## 运行主采集
 
 ```powershell
 $py = "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
 & $py .\scripts\run_collector.py --max-items 30 --no-email
 ```
 
-可选参数：
+常用参数：
 
 ```powershell
-& $py .\scripts\run_collector.py --max-items 30
-& $py .\scripts\run_collector.py --source-mode news --no-email
-& $py .\scripts\run_collector.py --source-mode bing --no-email
+& $py .\scripts\run_collector.py --source-mode both --max-items 30 --no-email
+& $py .\scripts\run_collector.py --source-mode news --max-items 30 --no-email
+& $py .\scripts\run_collector.py --source-mode bing --max-items 30 --no-email
 ```
 
-## 输出文件
+## 运行社媒授权采集
 
-- `outputs\YYYY-MM-DD_competitor_brief.md`：当日日报 Markdown。
-- `outputs\YYYY-MM-DD_competitor_brief.csv`：当日日报 CSV。
-- `data\raw\YYYY-MM-DD_raw_items.jsonl`：原始抓取结果。
-- `D:\kin\competitor_intel.db`：本地 SQLite 数据库，包含 `collector_runs`、`intelligence_items`、`report_items`。
-- `D:\kin\竞品情报\YYYY-MM-DD_竞品情报.md`：Obsidian 可读日报。
-- `D:\kin\竞品情报\每日简报\YYYY-MM-DD 竞品信息简报.md`：沉淀到竞品情报目录的正式日报，包含 AI 总结。
-- `D:\kin\竞品情报\情报条目\*.md`：每条收录内容的竞品情报笔记，包含 `## AI总结`、选取原因和检索上下文。
-- `D:\kin\OB数据库\08 项目\竞品情报收集\每日运行\YYYY-MM-DD 竞品情报收集.md`：OB 数据库项目日报。
-- `D:\kin\OB数据库\08 项目\竞品情报收集\情报条目\*.md`：每条入库日报条目的独立 OB 数据库笔记。
-
-## 自动化
-
-Windows 计划任务名称：`KinCompetitorDbUpdate`。
-
-脚本入口：
-
-```powershell
-.\scripts\run_daily_db_update.ps1
-```
-
-日志目录：
-
-```text
-outputs\automation\
-```
-
-## 配置
-
-核心配置在 `configs\collector_config.json`：
-
-- `settings.max_daily_items` 控制单日上限，默认 30。
-- `settings.required_report_industry` 默认 `计生/两性健康`。
-- `settings.required_report_min_share` 默认 `0.6`，实际执行为严格大于 60%。
-- `settings.report_duplicate_window_days` 控制跨天去重窗口，默认 180。
-- `brands` 控制品牌池和别名。
-- `platforms` 控制平台和域名识别。
-- `source_registry` 控制结构化来源池，可按行业、域名、模板、单来源查询上限扩展高信号来源。
-- `source_pack_queries` 控制官方/行业固定来源。
-- `platform_search_queries` 控制微信公众号、抖音、小红书、微博、知乎、B 站、电商等定向搜索。
-- `supplemental_queries` 控制补充搜索词。
-- `settings.ob_database_sync_enabled` 控制是否同步到 `D:\kin\OB数据库`。
-- `settings.ob_competitor_project_folder` 默认 `08 项目\竞品情报收集`。
-
-## 社媒扩源：小红书/抖音
-
-社媒扩源使用浏览器授权采集，不绕过登录、验证码或平台风控。首次使用先打开持久化浏览器 profile 完成登录：
+首次使用先打开持久化浏览器 profile 完成登录：
 
 ```powershell
 .\scripts\run_social_browser_collect.ps1 --login-only --platforms xiaohongshu,douyin --login-wait-seconds 240
 ```
 
-登录后运行小规模试采集：
+登录后小规模采集：
 
 ```powershell
-.\scripts\run_social_browser_collect.ps1 --platforms xiaohongshu,douyin --queries "杰士邦 被卖,乐福思 股权转让,杜蕾斯 杰士邦 冈本 测评" --limit-per-query 5 --output 2026-06-12_social_pilot.jsonl
+.\scripts\run_social_browser_collect.ps1 --platforms xiaohongshu,douyin --queries "杜蕾斯 避孕套,杰士邦 润滑剂,冈本 测评" --limit-per-query 5
 ```
 
 导入社媒候选池：
 
 ```powershell
-$py = "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
-& $py .\scripts\import_social_candidates.py --input data\social\2026-06-12_social_pilot.jsonl --date 2026-06-12
+& $py .\scripts\import_social_candidates.py --input data\social\YYYY-MM-DD_social_raw.jsonl --date YYYY-MM-DD
 ```
 
-导入后会写入：
+## 输出
 
-- `D:\kin\competitor_intel.db` 的 `intelligence_items` 候选记录。
-- `outputs\YYYY-MM-DD_social_candidates.md/csv`。
-- `D:\kin\竞品情报\社媒候选\YYYY-MM-DD 社媒候选.md`。
-- `D:\kin\OB数据库\08 项目\竞品情报收集\社媒候选\YYYY-MM-DD 社媒候选.md`。
+- `outputs\YYYY-MM-DD_competitor_brief.md`
+- `outputs\YYYY-MM-DD_competitor_brief.csv`
+- `data\raw\YYYY-MM-DD_raw_items.jsonl`
+- `D:\kin\competitor_intel.db`
+- `D:\kin\竞品情报\...`
+- `D:\kin\OB数据库\08 项目\竞品情报收集\...`
 
-如果采集结果只有 `status: login_required`，说明浏览器授权尚未完成或登录态失效，需要重新运行登录命令并扫码。
+## 验证
 
-## 验收要点
+上传或交付前至少运行：
 
-不要只看脚本是否运行完成，要验证真实落地结果：
+```powershell
+$py = "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+& $py -m py_compile src\competitor_collector.py scripts\run_collector.py scripts\import_social_candidates.py scripts\generate_weekly_report.py
+node --check scripts\social_browser_collect.mjs
+git status --short
+```
 
-- `collector_runs` 有最新运行记录。
-- `report_items` 有当天日报条目。
-- `intelligence_items.content_summary` 非空。
-- `intelligence_items.ai_summary` 非空。
-- 当天计生/两性健康占比严格大于 60%。
-- `D:\kin\竞品情报\YYYY-MM-DD_竞品情报.md` 实际存在并更新。
-- `D:\kin\竞品情报\每日简报` 和 `D:\kin\竞品情报\情报条目` 实际存在并更新，且情报条目包含 `## AI总结`。
-- `D:\kin\OB数据库\08 项目\竞品情报收集` 下的每日运行和情报条目实际存在并更新。
+如果执行真实采集，还要验证 SQLite 表、当日报告、Obsidian 同步文件和候选池文件是否真实更新。
