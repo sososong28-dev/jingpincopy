@@ -1,85 +1,111 @@
-# 竞品情报采集 Skill
+# 行业竞品情报收集工具
 
-这是一个可复用的 Codex skill 和本地采集工具，用于自动收集美妆、医药、计生/两性健康行业的公开竞品信息，并同步到本地 SQLite 数据库和 Obsidian 目录。
+本仓库是一个本地运行的竞品情报采集与沉淀工具，面向美妆、医药、计生/两性健康等行业。它从公开搜索、新闻源和授权浏览器采集入口发现候选信息，整理为日报、候选池、SQLite 数据库记录和 Obsidian 笔记。
 
-默认策略：
+## 项目结构
 
-- 单日最多输出 30 条。
-- 计生/两性健康占比严格大于 60%。
-- 每条保留原标题、链接、新闻发布时间、收录时间、平台、品牌、品类、内容总结和选取原因。
-- 新闻发布时间距离收集日不超过 6 个月。
-- 跨天按 180 天窗口去重，同一天重跑允许覆盖刷新当天报告。
-- 邮件发送默认关闭，只更新数据库和 Obsidian。
+| 路径 | 用途 |
+|---|---|
+| `src/competitor_collector.py` | 主采集器：公开搜索、去重、筛选、数据库写入、日报生成、Obsidian 同步。 |
+| `scripts/run_collector.py` | Python 主采集器命令行入口。 |
+| `scripts/import_social_candidates.py` | 将小红书/抖音浏览器采集 JSONL 导入候选池和本地数据库。 |
+| `scripts/generate_weekly_report.py` | 基于 `D:\kin\competitor_intel.db` 生成周报 Markdown 和长图。 |
+| `scripts/social_browser_collect.mjs` | Playwright 授权浏览器采集脚本。 |
+| `scripts/run_social_browser_collect.ps1` | Windows PowerShell 封装入口，会按需安装 Node 依赖。 |
+| `scripts/run_daily_db_update.ps1` | 每日自动更新入口。 |
+| `scripts/send_daily_email.py` | 日报邮件发送辅助脚本。 |
+| `configs/collector_config.json` | 主采集配置：行业、品牌、来源、查询词、数据库/Obsidian 路径。 |
+| `configs/social_browser_config.json` | 社媒浏览器采集配置。 |
+| `docs/CODE_INDEX.md` | 更详细的代码索引、运行链路和验证清单。 |
 
-## 目录结构
+运行产物默认写入 `data/`、`outputs/` 和 `D:\kin`，这些目录不应作为源码上传。
 
-```text
-skill/competitor-intel-collector/SKILL.md  Codex skill
-src/competitor_collector.py                采集器核心逻辑
-scripts/run_collector.py                   手动运行入口
-scripts/run_daily_db_update.ps1            每日数据库更新脚本
-scripts/install_windows_task.ps1           Windows 计划任务安装脚本
-scripts/generate_weekly_report.py          周报 Markdown/长图生成脚本
-configs/collector_config.json              默认配置
-configs/collector_config.example.json      配置模板
+## 默认机制
+
+- 单日输出默认不超过 30 条。
+- 计生/两性健康在日报中保持配置要求的最低占比。
+- 跨天按配置窗口去重，同一天重跑允许覆盖刷新当天报告。
+- 数据同步到本地 SQLite：`D:\kin\competitor_intel.db`。
+- Obsidian 同步目录：`D:\kin\竞品情报`。
+- OB 数据库同步目录：`D:\kin\OB数据库\08 项目\竞品情报收集`。
+
+## 环境要求
+
+- Windows + PowerShell。
+- Python 3.11+。本机推荐使用 Codex bundled Python：
+
+```powershell
+$py = "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
 ```
 
-## 快速运行
+- Node.js + npm，用于 Playwright 社媒采集。
+- 已登录的小红书/抖音浏览器 profile，仅用于合规的授权浏览器采集，不绕过登录、验证码或平台风控。
+
+## 安装
+
+```powershell
+npm install
+```
+
+Python 当前只使用标准库；`scripts/generate_weekly_report.py` 需要 Pillow：
+
+```powershell
+& $py -m pip install pillow
+```
+
+## 运行主采集
 
 ```powershell
 $py = "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
 & $py .\scripts\run_collector.py --max-items 30 --no-email
 ```
 
-默认写入：
-
-- SQLite：`D:\kin\competitor_intel.db`
-- Obsidian：`D:\kin\竞品情报\YYYY-MM-DD_竞品情报.md`
-- 本地报告：`outputs\YYYY-MM-DD_competitor_brief.md` 和 `.csv`
-- 原始抓取：`data\raw\YYYY-MM-DD_raw_items.jsonl`
-
-## 安装每日任务
+常用参数：
 
 ```powershell
-.\scripts\install_windows_task.ps1
+& $py .\scripts\run_collector.py --source-mode both --max-items 30 --no-email
+& $py .\scripts\run_collector.py --source-mode news --max-items 30 --no-email
+& $py .\scripts\run_collector.py --source-mode bing --max-items 30 --no-email
 ```
 
-默认任务：
+## 运行社媒授权采集
 
-- 名称：`KinCompetitorDbUpdate`
-- 时间：每天 09:05
-- 动作：运行 `scripts\run_daily_db_update.ps1`
-- 邮件：关闭
+首次使用先打开持久化浏览器 profile 完成登录：
 
-## 使用 Skill
-
-将 `skill/competitor-intel-collector` 复制或同步到 Codex skills 目录后，可用类似请求触发：
-
-```text
-使用 competitor-intel-collector，今天重新采集竞品情报并验证 D:\kin 数据库和 Obsidian 是否更新。
+```powershell
+.\scripts\run_social_browser_collect.ps1 --login-only --platforms xiaohongshu,douyin --login-wait-seconds 240
 ```
 
-Skill 会要求优先验证真实落地结果，包括 `collector_runs`、`report_items`、`intelligence_items`、OB 文件和自动化任务结果。
+登录后小规模采集：
 
-## 配置
+```powershell
+.\scripts\run_social_browser_collect.ps1 --platforms xiaohongshu,douyin --queries "杜蕾斯 避孕套,杰士邦 润滑剂,冈本 测评" --limit-per-query 5
+```
 
-主要配置在 `configs/collector_config.json`：
+导入社媒候选池：
 
-- `brands`：品牌和别名。
-- `platforms`：平台和来源域名。
-- `source_pack_queries`：官方/行业固定来源。
-- `platform_search_queries`：微信、抖音、小红书、微博、知乎、B 站、电商等定向搜索。
-- `supplemental_queries`：补充搜索词。
-- `settings.required_report_industry`：默认 `计生/两性健康`。
-- `settings.required_report_min_share`：默认 `0.6`，实际执行为严格大于 60%。
-- `settings.report_duplicate_window_days`：默认 `180`。
+```powershell
+& $py .\scripts\import_social_candidates.py --input data\social\YYYY-MM-DD_social_raw.jsonl --date YYYY-MM-DD
+```
 
-## GitHub 注意事项
+## 输出
 
-仓库不应提交以下内容：
+- `outputs\YYYY-MM-DD_competitor_brief.md`
+- `outputs\YYYY-MM-DD_competitor_brief.csv`
+- `data\raw\YYYY-MM-DD_raw_items.jsonl`
+- `D:\kin\competitor_intel.db`
+- `D:\kin\竞品情报\...`
+- `D:\kin\OB数据库\08 项目\竞品情报收集\...`
 
-- `data/` 原始抓取和去重状态。
-- `outputs/` 日报、邮件草稿和自动化日志。
-- `D:\kin` 本地数据库或 Obsidian 文件。
-- SMTP 密码、邮箱授权码、Cookie、浏览器会话或任何账号凭据。
+## 验证
 
+上传或交付前至少运行：
+
+```powershell
+$py = "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+& $py -m py_compile src\competitor_collector.py scripts\run_collector.py scripts\import_social_candidates.py scripts\generate_weekly_report.py
+node --check scripts\social_browser_collect.mjs
+git status --short
+```
+
+如果执行真实采集，还要验证 SQLite 表、当日报告、Obsidian 同步文件和候选池文件是否真实更新。

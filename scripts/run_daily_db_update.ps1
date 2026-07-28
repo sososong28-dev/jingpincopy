@@ -4,14 +4,9 @@ $ScriptPath = $MyInvocation.MyCommand.Path
 $Root = Split-Path -Parent (Split-Path -Parent $ScriptPath)
 Set-Location $Root
 
-$Python = $env:KIN_PYTHON
-if (-not $Python) {
-    $Candidate = "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
-    if (Test-Path -LiteralPath $Candidate) {
-        $Python = $Candidate
-    } else {
-        $Python = "python"
-    }
+$Python = "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+if (-not (Test-Path -LiteralPath $Python)) {
+    $Python = "python"
 }
 
 $LogDir = Join-Path $Root "outputs\automation"
