@@ -1,0 +1,71 @@
+{
+  "settings": {
+    "profile_dir": "data/browser-profile/social-intel",
+    "output_dir": "data/social",
+    "screenshot_dir": "outputs/social_screenshots",
+    "headless": false,
+    "browser_channel": "msedge",
+    "limit_per_query": 8,
+    "scroll_rounds": 4,
+    "page_wait_ms": 4500,
+    "login_wait_seconds": 240
+  },
+  "platforms": {
+    "xiaohongshu": {
+      "name": "小红书",
+      "home_url": "https://www.xiaohongshu.com/explore",
+      "search_url": "https://www.xiaohongshu.com/search_result?keyword={query}&source=web_explore_feed",
+      "item_url_patterns": ["/explore/", "/discovery/item/"]
+    },
+    "douyin": {
+      "name": "抖音",
+      "home_url": "https://www.douyin.com/",
+      "search_url": "https://www.douyin.com/search/{query}?type=general",
+      "item_url_patterns": ["/video/", "/note/"]
+    }
+  },
+  "query_groups": [
+    {
+      "group": "杰士邦出售专题",
+      "priority": "P0",
+      "queries": [
+        "杰士邦 被卖",
+        "杰士邦 乐福思",
+        "杰士邦 买家",
+        "乐福思 股权转让",
+        "避孕套 巨头 清仓"
+      ]
+    },
+    {
+      "group": "安全套价格测评",
+      "priority": "P1",
+      "queries": [
+        "杜蕾斯 杰士邦 冈本 测评",
+        "避孕套 推荐 杜蕾斯 冈本",
+        "避孕套 价格 杰士邦",
+        "冈本 杰士邦 区别",
+        "大象 杜蕾斯 测评"
+      ]
+    },
+    {
+      "group": "润滑剂与女性体验",
+      "priority": "P1",
+      "queries": [
+        "润滑剂 女性 体验",
+        "杜蕾斯 润滑剂 测评",
+        "杰士邦 润滑剂 推荐",
+        "SKYN 润滑剂 测评"
+      ]
+    },
+    {
+      "group": "情趣器具品牌",
+      "priority": "P2",
+      "queries": [
+        "LELO 测评",
+        "TENGA 测评",
+        "SVAKOM 体验",
+        "情趣用品 避雷"
+      ]
+    }
+  ]
+}
